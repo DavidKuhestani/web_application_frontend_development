@@ -1,0 +1,164 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Schedule</title>
+	<style>
+		body{
+			text-align: center;
+		}
+		label {
+			display: block;
+			font: 1rem 'Fira Sans', sans-serif;
+		}
+		input,
+		label {
+			margin: .4rem 0;
+		}
+		input[type=button]{
+			background-color: #4CAF50;
+			border: none;
+			color: white;
+			padding: 16px 32px;
+			text-decoration: none;
+			margin: 4px 2px;
+			cursor: pointer;
+			display: block;
+			margin-top: 20px;
+			
+		}
+		#center {
+			margin: auto;
+			width: 50%;
+			border: 3px solid green;
+			padding: 10px;
+		}
+		#sessionTime {
+			margin: auto;
+			width: 50%;
+			border: 3px solid green;
+			padding: 10px;
+		}
+
+		#submitbutton {
+			margin-left: 660px;
+
+		}
+
+	</style>
+</head>
+
+<body>
+<label for="dates">Choose a date for the information to show</label>
+  <select name="dates" id="datepicker">
+  </select><br>
+	<input type="radio" id="paper" name="sessions" value="paper">
+	<label for="paper">Paper</label>
+	<input type="radio" id="expaper" name="sessions" value="excludePaper">
+	<label for="expaper">Anything except paper</label>
+	<input type="radio" id="allSessions" name="sessions" value="allSessions">
+	<label for="allSessions">All sessions</label>
+	<input type="button" id="submitbutton" value="Submit" onclick="submitDate()">
+	<div id="center">
+	</div>
+	<div id="sessionTime">
+	</div>
+</body>
+	<script>
+		var url = "scheduling.json";
+		var xmlhttp = new XMLHttpRequest();
+		
+		xmlhttp.onreadystatechange = function() {
+			//If no error code parsing JSON file
+			if (this.readyState == 4 && this.status == 200) {
+				// Parse from text to JSON object
+				var jsonObj = JSON.parse(xmlhttp.responseText);
+
+				// Looking through data in objects 
+				for(var data in jsonObj){
+					var date = jsonObj[data].date;
+					var day = jsonObj[data].day;
+					document.getElementById('datepicker').innerHTML += "<option value='"+date+"'>"+day+" "+date+"</option>";
+					console.log(document.getElementById('datepicker').innerHTML);
+				}
+			}	
+		};
+		xmlhttp.open("GET", url, true);
+		xmlhttp.send();
+	
+	
+	//Onclick more info on submissions with the given ID 
+	function moreinfo(id){
+		var url = "scheduling.json";
+		var xmlhttp = new XMLHttpRequest();
+		
+		xmlhttp.onreadystatechange = function() {
+			//If no error code on request
+			if (this.readyState == 4 && this.status == 200) {
+				// Parse from text to JSON object
+				var jsonObj = JSON.parse(xmlhttp.responseText);
+				// Looking through data in objects 
+				for(var data in jsonObj){
+					//Object inside object etc
+					for(var slots in jsonObj[data].slots){	
+						for(var session in jsonObj[data].slots[slots].sessions){
+							// Matching session id with given ID to know which div to populate with more information
+							if(jsonObj[data].slots[slots].sessions[session].sessionId == id){
+								for(var submission in jsonObj[data].slots[slots].sessions[session].submissions){
+									//Gets div by given Id and populated it with information about given submissions
+									document.getElementById("moreInfoSession"+id).innerHTML += '<p>Title: '+jsonObj[data].slots[slots].sessions[session].submissions[submission].title+'</p><a target="_blank" href="'+jsonObj[data].slots[slots].sessions[session].submissions[submission].doiUrl+'">doiUrl: '+jsonObj[data].slots[slots].sessions[session].submissions[submission].doiUrl+'</a>';
+								}
+							}
+						}
+					}
+				}
+			}	
+		};
+		xmlhttp.open("GET", url, true);
+		xmlhttp.send();
+	}
+
+	function submitDate(){
+		document.getElementById("center").innerHTML = "";
+		document.getElementById("sessionTime").innerHTML = "";
+		var url = "scheduling.json";
+		var xmlhttp = new XMLHttpRequest();
+		xmlhttp.onreadystatechange = function() {
+    		if(this.readyState == 4 && this.status == 200) {
+				var jsonObj = JSON.parse(xmlhttp.responseText);
+				//Looking through json object 
+				for(var data in jsonObj){
+					var date = jsonObj[data].date;
+					var day = jsonObj[data].day;
+					//If date is selected 
+					if(document.getElementById("datepicker").value == jsonObj[data].date){
+						//Populates center div with dates and day
+						document.getElementById("center").innerHTML += '<p ' + 'id='+ date  + '>' + day +" "+ date+ '</p>';
+						//Loops each slot in json object 
+						for(var slots in jsonObj[data].slots){	
+							//Loops each session in slots object
+							for(var session in jsonObj[data].slots[slots].sessions){
+								//Adds HTML code to the right sessions, if type = paper only paper sessions is visible
+								if(document.getElementById("paper").checked && jsonObj[data].slots[slots].sessions[session].type == "paper"){
+									document.getElementById("sessionTime").innerHTML += '<p class="sessions">'+ jsonObj[data].slots[slots].sessions[session].title + '<br>Start time: '+ jsonObj[data].slots[slots].sessions[session].time + '<br>Location: '+ jsonObj[data].slots[slots].sessions[session].room + '<br>Session type: '+jsonObj[data].slots[slots].sessions[session].type +'</p><button id="'+jsonObj[data].slots[slots].sessions[session].sessionId+'" onClick="moreinfo(this.id)">More Info</button><div id="moreInfoSession'+jsonObj[data].slots[slots].sessions[session].sessionId+'"></div><hr>';
+								}
+								//If all but paper is selected show all but paper type sessions
+								if(document.getElementById("expaper").checked && jsonObj[data].slots[slots].sessions[session].type != "paper"){
+									document.getElementById("sessionTime").innerHTML += '<p class="sessions">'+ jsonObj[data].slots[slots].sessions[session].title + '<br>Start time: '+ jsonObj[data].slots[slots].sessions[session].time + '<br>Location: '+ jsonObj[data].slots[slots].sessions[session].room + '<br>Session type: '+jsonObj[data].slots[slots].sessions[session].type +'</p><button id="'+jsonObj[data].slots[slots].sessions[session].sessionId+'" onClick="moreinfo(this.id)">More Info</button><div id="moreInfoSession'+jsonObj[data].slots[slots].sessions[session].sessionId+'"></div><hr>';
+								}
+								//If all is selected show all sessions
+								if(document.getElementById("allSessions").checked){
+									document.getElementById("sessionTime").innerHTML += '<p class="sessions">'+ jsonObj[data].slots[slots].sessions[session].title + '<br>Start time: '+ jsonObj[data].slots[slots].sessions[session].time + '<br>Location: '+ jsonObj[data].slots[slots].sessions[session].room + '<br>Session type: '+jsonObj[data].slots[slots].sessions[session].type +'</p><button id="'+jsonObj[data].slots[slots].sessions[session].sessionId+'" onClick="moreinfo(this.id)">More Info</button><div id="moreInfoSession'+jsonObj[data].slots[slots].sessions[session].sessionId+'"></div><hr>';
+								}
+							}
+						}
+					}
+				}
+			}
+		};
+		xmlhttp.open("GET", url, true);
+		xmlhttp.send();
+	}
+	</script>
+</html>
+
